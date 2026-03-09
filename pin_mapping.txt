@@ -1,0 +1,26 @@
+Screen and pi 
+Pi Zero W2 - Left side (odd pins)        Right side (even pins)
+Pin 1  [3.3V]  ← VCC & LED              Pin 2  [5V]
+Pin 3  [GPIO2]                           Pin 4  [5V]
+Pin 5  [GPIO3]                           Pin 6  [GND] ← GND
+...
+Pin 17 [3.3V]  ← LED (alt)              Pin 18 [GPIO24] ← DC
+Pin 19 [GPIO10/MOSI] ← SDI/MOSI         Pin 20 [GND]
+Pin 21 [GPIO9/MISO]  ← SDO (optional)   Pin 22 [GPIO25] ← RESET
+Pin 23 [GPIO11/SCLK] ← SCK              Pin 24 [GPIO8/CE0] ← CS
+
+Touch sensor
+Touch SensorPi Zero PinVCCPin 1 (3.3V)GNDPin 6 (GND)IOPin 11 (GPIO17)
+
+PIR sensor (HC-SR501 or similar)
+PIR Pin    Pi Zero Pin    Notes
+VCC      → Pin 2  [5V]   PIR needs 5V (not 3.3V)
+GND      → Pin 9  [GND]  first free GND after Pin 6
+OUT      → Pin 7  [GPIO4] first free GPIO
+
+Pins still free for future use:
+  GPIO: GPIO5(Pin29), GPIO6(Pin31), GPIO13(Pin33), GPIO19(Pin35), GPIO26(Pin37)
+  GPIO: GPIO12(Pin32), GPIO16(Pin36), GPIO20(Pin38), GPIO21(Pin40)
+  3.3V: Pin 17 shared (already used by LED alt)
+  5V:   Pin 4
+  GND:  Pin 14, Pin 20, Pin 25, Pin 30, Pin 34, Pin 39
