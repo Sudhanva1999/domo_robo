@@ -66,20 +66,18 @@ def run_raw():
         print(f"  {name:<6} GPIO{pin}  set up as INPUT with pull-down")
 
     print()
-    print("Polling every 50 ms — showing changes only.")
+    print("Polling every 50 ms — printing every read.")
     print("(Hold Ctrl+C to stop)\n")
-
-    last = {pin: None for _, pin in selected.values()}
 
     try:
         while True:
+            ts = time.strftime('%H:%M:%S.') + f'{int(time.time()*1000)%1000:03d}'
+            parts = []
             for name, pin in selected.values():
                 level = GPIO.input(pin)
-                if level != last[pin]:
-                    state = "HIGH ▲" if level else "LOW  ▼"
-                    print(f"[{time.strftime('%H:%M:%S.') + f'{int(time.time()*1000)%1000:03d}'}]  "
-                          f"{name:<6} GPIO{pin}  {state}")
-                    last[pin] = level
+                state = "HIGH" if level else "LOW "
+                parts.append(f"{name:<6} GPIO{pin}: {state}")
+            print(f"[{ts}]  {'   '.join(parts)}")
             time.sleep(0.05)
     except KeyboardInterrupt:
         pass
