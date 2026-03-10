@@ -1,13 +1,16 @@
 # test_sensors.py
 # ─────────────────────────────────────────────────────────────────────────────
 # Standalone sensor test — no display required.
-# Starts all sensors and prints every event they fire to stdout.
 #
 # Usage:
-#   python test_sensors.py           — test all sensors
-#   python test_sensors.py touch     — test touch only
-#   python test_sensors.py pir       — test pir only
+#   python test_sensors.py                  test all sensors (event mode)
+#   python test_sensors.py touch            test touch only
+#   python test_sensors.py pir              test PIR only
+#   python test_sensors.py raw              raw GPIO levels for all pins
+#   python test_sensors.py raw touch        raw GPIO level for touch pin only
+#   python test_sensors.py raw pir          raw GPIO level for PIR pin only
 #
+# Must be run as root on the Pi:  sudo python test_sensors.py
 # Press Ctrl+C to stop.
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -15,62 +18,147 @@ import sys
 import time
 import threading
 
-from animations.sensors.touch import TouchSensor
-from animations.sensors.pir   import PIRSensor
-import config as cfg
+# ── Check root ────────────────────────────────────────────────────────────────
 
-# ── Event counts ──────────────────────────────────────────────────────────────
+import os
+if os.geteuid() != 0:
+    print("WARNING: not running as root — GPIO access may fail.")
+    print("         Try: sudo python test_sensors.py\n")
 
-counts = {}
-counts_lock = threading.Lock()
-
-def on_event(event: str):
-    now = time.strftime("%H:%M:%S")
-    with counts_lock:
-        counts[event] = counts.get(event, 0) + 1
-        total = counts[event]
-    print(f"[{now}]  {event:<22}  (#{total})")
-
-# ── Sensor selection ──────────────────────────────────────────────────────────
-
-arg = sys.argv[1].lower() if len(sys.argv) > 1 else "all"
-
-sensors = []
-
-if arg in ("all", "touch"):
-    sensors.append(TouchSensor(on_event=on_event))
-
-if arg in ("all", "pir"):
-    sensors.append(PIRSensor(on_event=on_event))
-
-if not sensors:
-    print(f"Unknown sensor '{arg}'. Choose: all | touch | pir")
-    sys.exit(1)
-
-# ── Run ───────────────────────────────────────────────────────────────────────
-
-print("─" * 50)
-print("  Sensor test — waiting for events")
-print(f"  Touch pin : GPIO{cfg.TOUCH_PIN}  (Pin 11)")
-print(f"  PIR pin   : GPIO{cfg.PIR_PIN}   (Pin 7)")
-print("─" * 50)
-print()
-
-for s in sensors:
-    s.start()
+# ── Import GPIO ───────────────────────────────────────────────────────────────
 
 try:
-    while True:
-        time.sleep(1)
-except KeyboardInterrupt:
-    pass
-finally:
-    print("\nStopping sensors...")
+    import RPi.GPIO as GPIO
+except ImportError:
+    print("ERROR: RPi.GPIO not found. Install with: pip install RPi.GPIO")
+    sys.exit(1)
+
+import config as cfg
+
+# ── Parse args ────────────────────────────────────────────────────────────────
+# Accepted forms:
+#   test_sensors.py
+#   test_sensors.py touch | pir | all
+#   test_sensors.py raw
+#   test_sensors.py raw touch | pir | all
+
+args  = [a.lower() for a in sys.argv[1:]]
+raw   = "raw" in args
+which = next((a for a in args if a in ("touch", "pir", "all")), "all")
+
+# ── Pin map ───────────────────────────────────────────────────────────────────
+
+PINS = {
+    "touch": ("Touch", cfg.TOUCH_PIN),
+    "pir":   ("PIR",   cfg.PIR_PIN),
+}
+
+selected = {k: v for k, v in PINS.items() if which == "all" or which == k}
+
+# ─────────────────────────────────────────────────────────────────────────────
+# RAW MODE — poll GPIO directly, print every level change
+# ─────────────────────────────────────────────────────────────────────────────
+
+def run_raw():
+    GPIO.setmode(GPIO.BCM)
+    for name, pin in selected.values():
+        GPIO.setup(pin, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
+        print(f"  {name:<6} GPIO{pin}  set up as INPUT with pull-down")
+
+    print()
+    print("Polling every 50 ms — showing changes only.")
+    print("(Hold Ctrl+C to stop)\n")
+
+    last = {pin: None for _, pin in selected.values()}
+
+    try:
+        while True:
+            for name, pin in selected.values():
+                level = GPIO.input(pin)
+                if level != last[pin]:
+                    state = "HIGH ▲" if level else "LOW  ▼"
+                    print(f"[{time.strftime('%H:%M:%S.') + f'{int(time.time()*1000)%1000:03d}'}]  "
+                          f"{name:<6} GPIO{pin}  {state}")
+                    last[pin] = level
+            time.sleep(0.05)
+    except KeyboardInterrupt:
+        pass
+    finally:
+        GPIO.cleanup()
+        print("\nGPIO cleaned up.")
+
+# ─────────────────────────────────────────────────────────────────────────────
+# EVENT MODE — run full sensor classes, print classified events
+# ─────────────────────────────────────────────────────────────────────────────
+
+def run_events():
+    from animations.sensors.touch import TouchSensor
+    from animations.sensors.pir   import PIRSensor
+
+    counts      = {}
+    counts_lock = threading.Lock()
+
+    def on_event(event: str):
+        now = time.strftime("%H:%M:%S")
+        with counts_lock:
+            counts[event] = counts.get(event, 0) + 1
+            n = counts[event]
+        print(f"[{now}]  {event:<22}  (#{n})")
+
+    sensors = []
+    try:
+        if "touch" in selected:
+            sensors.append(TouchSensor(on_event=on_event))
+        if "pir" in selected:
+            sensors.append(PIRSensor(on_event=on_event))
+    except Exception as e:
+        print(f"ERROR creating sensor: {e}")
+        sys.exit(1)
+
     for s in sensors:
-        s.stop()
-    print("\nEvent summary:")
-    if counts:
-        for event, n in sorted(counts.items()):
-            print(f"  {event:<22} {n}x")
-    else:
-        print("  (no events received)")
+        try:
+            s.start()
+            print(f"  {s.name} sensor started.")
+        except Exception as e:
+            print(f"ERROR starting {s.name}: {e}")
+
+    print()
+    print("Waiting for events... (Ctrl+C to stop)\n")
+
+    try:
+        while True:
+            time.sleep(1)
+    except KeyboardInterrupt:
+        pass
+    finally:
+        print("\nStopping sensors...")
+        for s in sensors:
+            try:
+                s.stop()
+            except Exception:
+                pass
+
+        print("\nEvent summary:")
+        if counts:
+            for event, n in sorted(counts.items()):
+                print(f"  {event:<22}  {n}x")
+        else:
+            print("  (no events received)")
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Entry point
+# ─────────────────────────────────────────────────────────────────────────────
+
+print("─" * 52)
+print("  domo sensor test")
+print(f"  mode    : {'raw GPIO' if raw else 'event (classified)'}")
+print(f"  sensors : {', '.join(n for n, _ in selected.values())}")
+print(f"  touch   : GPIO{cfg.TOUCH_PIN}  (Pin 11)")
+print(f"  pir     : GPIO{cfg.PIR_PIN}   (Pin 7)")
+print("─" * 52)
+print()
+
+if raw:
+    run_raw()
+else:
+    run_events()
