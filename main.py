@@ -11,7 +11,6 @@
 
 from controller import Controller
 from animations.sensors.touch import TouchSensor
-from animations.sensors.pir import PIRSensor
 from animations.audio.listener import MicListener   # stub until mic is connected
 
 # ── Build controller ──────────────────────────────────────────────────────────
@@ -22,9 +21,6 @@ controller = Controller()
 
 touch = TouchSensor(on_event=controller.handle_event)
 controller.register_sensor(touch)
-
-pir = PIRSensor(on_event=controller.handle_event)
-controller.register_sensor(pir)
 
 # Uncomment when mic hardware is connected:
 # mic = MicListener(on_event=controller.handle_event)

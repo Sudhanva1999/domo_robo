@@ -12,15 +12,18 @@ Pin 23 [GPIO11/SCLK] ← SCK              Pin 24 [GPIO8/CE0] ← CS
 Touch sensor
 Touch SensorPi Zero PinVCCPin 1 (3.3V)GNDPin 6 (GND)IOPin 11 (GPIO17)
 
-PIR sensor (HC-SR501 or similar)
-PIR Pin    Pi Zero Pin    Notes
-VCC      → Pin 2  [5V]   PIR needs 5V (not 3.3V)
-GND      → Pin 9  [GND]  first free GND after Pin 6
-OUT      → Pin 7  [GPIO4] first free GPIO
+Time-of-Flight sensor (VL53L0X / VL53L1X breakout)
+ToF Pin    Pi Zero Pin         Notes
+VIN      → Pin 1  [3.3V]      3.3V (breakout has onboard reg; also accepts 5V via Pin2)
+GND      → Pin 9  [GND]
+SDA      → Pin 3  [GPIO2]     I2C1 data  — enable I2C in raspi-config
+SCL      → Pin 5  [GPIO3]     I2C1 clock — enable I2C in raspi-config
+INT      → Pin 7  [GPIO4]     interrupt output (active LOW); optional
+SHUT     → Pin 29 [GPIO5]     XSHUT / hardware reset (pull HIGH to run); optional
 
 Pins still free for future use:
-  GPIO: GPIO5(Pin29), GPIO6(Pin31), GPIO13(Pin33), GPIO19(Pin35), GPIO26(Pin37)
+  GPIO: GPIO6(Pin31), GPIO13(Pin33), GPIO19(Pin35), GPIO26(Pin37)
   GPIO: GPIO12(Pin32), GPIO16(Pin36), GPIO20(Pin38), GPIO21(Pin40)
   3.3V: Pin 17 shared (already used by LED alt)
-  5V:   Pin 4
+  5V:   Pin 2 (shared with ToF VIN if using 5V), Pin 4
   GND:  Pin 14, Pin 20, Pin 25, Pin 30, Pin 34, Pin 39

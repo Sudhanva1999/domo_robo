@@ -12,7 +12,6 @@ DISPLAY_BAUDRATE = 64_000_000
 
 # ── Sensor GPIO pins ──────────────────────────────────────────────────────────
 TOUCH_PIN = 17          # GPIO17 — Pin 11
-PIR_PIN   = 4           # GPIO4  — Pin 7
 
 # ── Touch gesture timing (seconds) ───────────────────────────────────────────
 TOUCH_DEBOUNCE       = 0.04   # ignore transitions shorter than this
@@ -68,9 +67,6 @@ EVENT_MAP = {
     "touch_double_tap": "play:happy",
     "touch_rub":        "play:laugh",
     "touch_hold":       "play:happy",
-
-    # PIR proximity
-    "pir_motion":       "play:anticipate",
 
     # Audio events (wired up when mic is added)
     "voice_loud":       "play:angry",
